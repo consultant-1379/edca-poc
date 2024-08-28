@@ -1,0 +1,15 @@
+bdr:
+  - url: 'http://eric-data-object-storage-mn.${namespace}:9000'
+    bucket: pm-data
+    request: upload
+    objectNames: 
+    - demoUpload.txt
+    - test
+  - url: 'http://eric-data-object-storage-mn.${namespace}:9000'
+    bucket: pm-data
+    request: download
+    objectNames: 
+    - demoUpload.txt
+    - test-data1.txt
+    - test-data2.txt
+    - test-data3.txt

@@ -1,0 +1,43 @@
+*.*.*sw*
+# Compiled source #
+*.class
+*/bin/*
+
+# Eclipse files
+.project
+.classpath
+.settings
+.metadata
+.checkstyle
+
+# Packages
+*.jar
+
+# Maven build files
+build
+target
+reports
+test-output
+# ARQ tests
+arq-perf
+
+sonar-project.properties
+
+# PMD
+.pmd
+
+#Generated files
+*.ser
+
+#IntelliJ files
+*.iml
+*.eml
+
+# Merge files
+*.orig
+
+# folders beginning with .
+.*/
+
+# misc
+*~

@@ -1,0 +1,35 @@
+pipeline {
+    agent {
+        node {
+            label 'E2c_Testing_Vapp'
+        }
+    }
+    stages {
+        stage('Test Prepare Helm Chart') {
+            steps {
+                script {
+                    // Generate integration helm chart
+                    withCredentials([
+                                      usernamePassword(credentialsId: 'gerrit-user', usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                                      string(credentialsId: 'artifactory-api-token-id', variable: 'ARM_API_TOKEN')
+                                      //file(credentialsId: 'repository-tokens-file', variable: 'HELM_REPO_CREDENTIALS')
+									  ]) {
+                        env.UPLOAD_INTERNAL = 'false'
+                        sh './Jenkins/scripts/baseline-handler.sh prepare'
+                    }
+                }
+            }
+        }
+        stage('Archive artifact.properties') {
+            steps {
+                // Archive artifact.properties so Spinnaker can read the parameters (GERRIT_REFSPEC)
+                archiveArtifacts 'artifact.properties'
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

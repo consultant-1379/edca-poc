@@ -1,0 +1,90 @@
+global:
+  security:
+    tls:
+      enabled: false
+# Zookeeper
+eric-data-coordinator-zk:
+  persistantVolumeClaim:
+    storageClassName: network-block
+# Kafka
+eric-data-message-bus-kf:
+  persistentVolumeClaim:
+    enabled: true
+    storageClassName: network-block
+# Object storage for minio
+eric-data-object-storage-mn:
+  tls:
+    enabled: false
+  credentials:
+    kubernetesSecretName: eric-data-object-storage-mn-secret
+# PM server
+eric-pm-server:
+  rbac:
+    create: false
+  server:
+    ingress:
+      enabled: true
+      hosts:
+      - pm-host
+# logging services 
+eric-data-search-engine:
+  persistence:
+    data:
+      persistentVolumeClaim:
+      storageClassName: network-block
+eric-log-shipper:
+  logshipper:
+    autodiscover:
+      enabled: true
+      namespace: <NAMESPACE>
+      logplane: app_logs
+eric-log-transformer:
+  searchengine:
+    logplaneConfig:
+    - field: "[facility]"
+      value: "log audit"
+      newLogplane: "app_logs"
+  config:
+    adpJson:
+      validation:
+        enabled: false
+      transformation:
+        enabled: true
+eric-data-search-engine-curator:
+  cronjob:
+    curator:
+      schedule: "0 * * * *"
+  dryRun: false
+  actions: |
+    1:
+      action: delete_indices
+      description: Remove kubelog older than 1 day
+      options:
+        disable_action: false
+        ignore_empty_list: true
+      filters:
+      - filtertype: pattern
+        kind: regex
+        value: '^(app_logs).*$'
+      - filtertype: age
+        source: name
+        direction: older
+        timestring: '%Y.%m.%d'
+        unit: days
+        unit_count: 1
+    2:
+      action: delete_indices
+      description: Remove kubelog older than 7 days
+      options:
+        disable_action: false
+        ignore_empty_list: true
+      filters:
+      - filtertype: pattern
+        kind: regex
+        value: '^(app_audit_logs).*$'
+      - filtertype: age
+        source: name
+        direction: older
+        timestring: '%Y.%m.%d'
+        unit: days
+        unit_count: 7

@@ -1,0 +1,28 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: custom-collector-cronjob
+spec:
+  schedule: "*/1 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          containers:
+          - name: custom-collector
+            image: armdocker.rnd.ericsson.se/proj-edca-dev/custom-collector:1.0.11
+            command:
+            - /bin/sh
+            - -c
+            - date; java -jar custom-collector.jar --spring.config.additional-location=configuration/config.properties --automation
+            volumeMounts:
+            - name: cc
+              mountPath: "/app/configuration"
+          volumes:
+          - name: cc
+            configMap:
+              name: custom-collector-config
+          restartPolicy: OnFailure

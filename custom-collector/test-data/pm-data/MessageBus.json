@@ -1,0 +1,8 @@
+{
+"name":"message-bus14",
+"clusterName":"hoff135",
+"nameSpace":"sunshine-pdsv",
+"accessEndpoints":["eric-oss-dmaap-kafka.sunshine-pdsv:9092"]
+}
+
+

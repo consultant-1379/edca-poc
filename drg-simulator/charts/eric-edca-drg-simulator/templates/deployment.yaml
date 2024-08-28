@@ -1,0 +1,84 @@
+#
+# COPYRIGHT Ericsson 2020
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been= supplied.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eric-edca-drg-simulator.fullname" . }}
+  labels:
+{{ include "eric-edca-drg-simulator.labels" . | indent 4 }}
+  annotations:
+{{ include "eric-edca-drg-simulator.product-info" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eric-edca-drg-simulator.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if and (eq .Values.updateStrategy.type "RollingUpdate") .Values.updateStrategy.rollingUpdate }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.updateStrategy.rollingUpdate.maxSurge }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "eric-edca-drg-simulator.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ include "eric-edca-drg-simulator.version" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ template "eric-edca-drg-simulator.registryUrl" . }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "drg-simulator" "name" }}:{{ index .Values "images" "drg-simulator" "tag" }}"
+          imagePullPolicy: {{ .Values.imageCredentials.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - --
+          {{- if .Values.drg.interactive }}
+          args:
+            - while true;do sleep 30;done
+          {{- else }}
+          args:
+            - "java -jar drgSimulatorApp.jar --interactive=false"
+          {{- end }}
+          env:
+            - name: "CATALOG_URL"
+              value: {{ index .Values "drg" "catalog" "url" }}                                  
+            - name: "MINIO_ACCESSKEY"
+              value: {{ index .Values "drg" "minio" "accesskey" }}
+            - name: "MINIO_SECRETKEY"
+              value: {{ index .Values "drg" "minio" "secretkey" }}
+          resources:
+            {{- toYaml .Values.resources.drg | nindent 12 }}
+
+      {{- if include "eric-edca-drg-simulator.pullSecrets" . }}
+      imagePullSecrets:
+        - name: {{ template "eric-edca-drg-simulator.pullSecrets" . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

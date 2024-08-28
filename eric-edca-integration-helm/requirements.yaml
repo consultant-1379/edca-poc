@@ -1,0 +1,56 @@
+dependencies:
+- condition: eric-data-message-bus-kf.enabled
+  name: eric-data-message-bus-kf
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  tags:
+  - kafka
+  version: 1.12.0-24
+- condition: eric-data-coordinator-zk.enabled
+  name: eric-data-coordinator-zk
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  tags:
+  - kafka
+  version: 1.12.0-10
+- condition: eric-data-object-storage-mn.enabled
+  name: eric-data-object-storage-mn
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-eric-data-object-storage-mn-drop-helm
+  version: 1.7.0-10
+- condition: eric-pm-server.enabled
+  name: eric-pm-server
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm
+  tags:
+  - pm
+  version: 4.0.0-0
+- condition: eric-data-search-engine.enabled
+  name: eric-data-search-engine
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  tags:
+  - logging
+  version: 5.0.0-15
+- condition: eric-data-search-engine-curator.enabled
+  name: eric-data-search-engine-curator
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm
+  tags:
+  - logging
+  version: 2.1.0-11
+- condition: eric-log-transformer.enabled
+  name: eric-log-transformer
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  tags:
+  - logging
+  version: 5.1.0+28
+- condition: eric-log-shipper.enabled
+  name: eric-log-shipper
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  tags:
+  - logging
+  version: 4.2.0-2
+- condition: eric-tm-ingress-controller-cr.enabled
+  name: eric-tm-ingress-controller-cr
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm
+  tags:
+  - ingress
+  version: 3.4.0-0
+- name: eric-edca-catalog-helm
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-edca-ci-internal-helm
+  version: 1.0.0-46

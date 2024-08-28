@@ -1,0 +1,6 @@
+{
+"name" : "BDR-entry24", 
+"nameSpace": "sunshine-pdsv", 
+"clusterName": "hoff135", 
+"accessEndpoints":["eric-oss-dmaap.sunshine-pdsv:9092/catalog-data"]
+}

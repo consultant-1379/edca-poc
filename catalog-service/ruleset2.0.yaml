@@ -1,0 +1,153 @@
+modelVersion: 2.0
+ 
+description: "Catalog example CI"
+ 
+docker-images:
+  - adp-helm-dr-check: armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/common-library-adp-helm-dr-check:latest
+  - doc-builder: armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob-docbuilder:41a32e6
+  - k8-test: armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob-py3kubehelmbuilder:latest
+  - adp-release-auto: armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob-adp-release-auto:latest
+  - java11-maven-builder: armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob-java11mvnbuilder:latest
+  - maven-builder: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/bob-javamvnbuilder.minideb:latest
+
+
+# List of constants
+properties:
+  - helm-chart-name: eric-edca-catalog-helm
+  - image-name: eric-edca-catalog
+  - helm-chart-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-edca-ci-internal-helm/
+  - image-registry: armdocker.rnd.ericsson.se
+  - helm-chart-file-name: ${helm-chart-name}-${var.version}.tgz
+
+ 
+  #- image-repopath-dirty: sandbox/adp-staging/dirty/adp-cicd
+  - image-repopath: proj-edca-catalog-service
+  - image-repo-dirty: ${image-registry}/${image-repopath}/${image-name}
+  - image-repo: ${image-registry}/${image-repopath}/${image-name}
+  - git-user: lciadm100
+  - git-repo-path: OSS/com.ericsson.oss.de/microservice-chassis
+  - git-repo-url: ssh://${git-user}@gerrit.ericsson.se:29418/${git-repo-path}
+  - git-repo: https://gerrit.ericsson.se/#/admin/projects/${git-repo-path}
+
+# Import environment variables (e.g. gitlab runner parameters)
+env:
+ - PWD
+ - RELEASE (default=false)
+ #- KUBECONFIG (default=notset)
+ - DOCKER_USERNAME
+ - DOCKER_PASSWORD
+ - HELM_TOKEN
+ - HELM_USER (default=enmadm100)
+ - ENABLE_HELM_V3 (default=true)
+
+# Variables, set by below tasks
+var:
+ - version
+ - commithash
+ - rstate
+
+# Rules to execute
+rules:
+ 
+  # Clean workspace
+  clean:
+    - task: rm
+      cmd:
+        - rm -rf .bob/
+        - rm -rf build/
+ 
+  # Initialize, generate version and read commit has
+  init:
+    - task: version
+      docker-image: adp-release-auto
+      cmd: generate-version --is-release ${env.RELEASE} --output version
+    - task: commit
+      docker-image: adp-release-auto
+      cmd: git rev-parse --short HEAD > .bob/var.commithash
+    - task: adp-artifacts-properties
+      docker-image: adp-release-auto
+      cmd: generate-adp-artifacts --chart-name ${helm-chart-name} --chart-version ${var.version} --chart-repo ${helm-chart-repo} --image-name ${image-name} --image-version firsttry --image-repo ${image-repo}
+  
+  # Build java source code and package jar file, no need image building at this stage
+  #build:
+  #  - task: mvn-package
+  #    docker-image: maven-builder
+  #    cmd: mvn -f catalog-service/pom.xml clean package -DskipTests=true
+
+  # Build a docker image pointing to internal repository
+  image:
+    - task: docker-build-dirty
+      cmd: docker build ${env.PWD}
+        --file catalog-service/Dockerfile
+        --tag ${image-repo-dirty}:${var.version}
+        --build-arg REPOSITORY=${git-repo}
+        --build-arg COMMIT=${var.commithash}
+        --build-arg APP_VERSION=${var.version}
+
+  # Run helm chart design rule checks
+  test:
+    - task: helm-chart-check
+      docker-image: adp-helm-dr-check
+      cmd: java -jar /helm-dr-check.jar --helm-chart charts/${helm-chart-name} --output .bob/
+ 
+  # Create official package
+  # Call publish only when merged to master
+
+  # Push image to ci-internal repo and create local version of helm chart
+  package:
+    - task: image-push-dirty
+      cmd: docker push ${image-repo}:${var.version}
+    - task: package-helm-dirty
+      docker-image: adp-release-auto
+      docker-flags:
+        - "--env HELM_USER"
+        - "--env HELM_TOKEN"
+        - "--env ENABLE_HELM_V3=${env.ENABLE_HELM_V3}"
+      cmd: helm-package
+        --folder catalog-service/charts/${helm-chart-name}
+        --workdir .bob --output .bob/${helm-chart-name}-dirty
+        --version ${var.version}
+        --replace VERSION=${var.version}
+
+  publish-internal:
+    - task: helm-upload-internal
+      docker-image: adp-release-auto
+      cmd: upload_file.sh
+        --filename=.bob/${helm-chart-name}-dirty/${helm-chart-file-name}
+        --repository=${helm-chart-repo}${helm-chart-name}
+        --api-token=${env.HELM_TOKEN}
+
+  publish:
+    - task: package-helm-public
+      docker-image: adp-release-auto
+      docker-flags:
+        - "--env HELM_USER"
+        - "--env HELM_TOKEN"
+        - "--env ENABLE_HELM_V3=${env.ENABLE_HELM_V3}"
+      cmd: helm-package
+        --folder catalog-service/charts/${helm-chart-name}
+        --workdir .bob --output build
+        --version ${var.version}
+        --replace VERSION=${var.version}
+
+    - task: image-pull-dirty
+      cmd: docker pull ${image-repo-dirty}:${var.version}
+    - task: image-tag-public
+      cmd: docker tag ${image-repo-dirty}:${var.version} ${image-repo}:${var.version}
+    - task: image-push-public
+      cmd: docker push ${image-repo}:${var.version}
+    #- task: git-tag
+    #  docker-image: adp-release-auto
+    #  cmd:
+    #    - git tag -a ${var.version} -m "Release ${var.version}"
+    #    - git push origin ${var.version}
+    - task: helm-upload
+      docker-image: adp-release-auto
+      docker-flags:
+        - "--env ENABLE_HELM_V3=${env.ENABLE_HELM_V3}"
+      cmd: upload_file.sh
+        --filename=build/${helm-chart-file-name}
+        --repository=${helm-chart-repo}${helm-chart-name}
+        --api-token=${env.HELM_TOKEN}
+
+ 

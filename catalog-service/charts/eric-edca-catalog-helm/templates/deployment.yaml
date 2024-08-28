@@ -1,0 +1,78 @@
+#
+# COPYRIGHT Ericsson 2020
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eric-edca-catalog-service.fullname" . }}
+  labels:
+{{ include "eric-edca-catalog-service.labels" . | indent 4 }}
+  annotations:
+{{ include "eric-edca-catalog-service.product-info" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eric-edca-catalog-service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if and (eq .Values.updateStrategy.type "RollingUpdate") .Values.updateStrategy.rollingUpdate }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.updateStrategy.rollingUpdate.maxSurge }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "eric-edca-catalog-service.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ include "eric-edca-catalog-service.version" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ template "eric-edca-catalog-service.registryUrl" . }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "catalog-service" "name" }}:{{ index .Values "images" "catalog-service" "tag" }}"
+          imagePullPolicy: {{ .Values.imageCredentials.pullPolicy }}
+          ports:
+            - name: catalog
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+          - name: TZ
+            value: {{ .Values.global.timezone }}
+          - name: DB_PASSWORD
+            valueFrom: 
+              secretKeyRef:
+                name: usersecret
+                key: super-pwd
+          resources:
+            {{- toYaml .Values.resources.catalog | nindent 12 }}
+
+      {{- if include "eric-edca-catalog-service.pullSecrets" . }}
+      imagePullSecrets:
+        - name: {{ template "eric-edca-catalog-service.pullSecrets" . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

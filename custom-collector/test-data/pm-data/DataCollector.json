@@ -1,0 +1,5 @@
+{
+"collectorId":"123e4567-e89b-12d3-g456-556642440000",
+"controlEndpoint":"http://data-collector",
+"name":"dataCollector"
+}

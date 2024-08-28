@@ -1,0 +1,11 @@
+{
+    "dataProviderTypeId": 33,
+    "reportOutputPeriodList": [
+        15
+    ],
+    "dataEncoding": "XML",
+    "specificationReference": "specref1",
+    "notificationTopicId": 1,
+    "bulkDataRepositoryId": 33,
+    "dataCollectorId": "123e4567-e89b-12d3-a456-556642440000"
+}

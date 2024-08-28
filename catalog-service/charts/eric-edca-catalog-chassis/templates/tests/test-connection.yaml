@@ -1,0 +1,32 @@
+#
+# COPYRIGHT Ericsson 2020
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "eric-ms-chassis.fullname" . }}-test-connection"
+  labels:
+{{ include "eric-ms-chassis.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+{{ include "eric-ms-chassis.product-info" . | indent 4 }}
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "eric-ms-chassis.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

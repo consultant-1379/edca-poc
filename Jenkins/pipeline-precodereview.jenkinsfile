@@ -1,0 +1,54 @@
+pipeline {
+    agent {
+        node {
+            label 'E2c_Testing_Vapp'
+        }
+    }
+    stages {
+        stage('Prepare') {
+            steps {
+                sh 'uname -a;whoami;echo $PATH;groups'
+                //sh 'git clean -xdff'
+                sh 'git submodule sync'
+                sh 'git submodule update --init --recursive'
+                // Ensure that Bob has all of its dependencies.
+                sh 'bob/bob --help'
+            }
+        }
+        stage('Clean') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml clean'
+            }
+        }
+        stage('Init') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml init'
+            }
+        }
+	stage('Build') {
+            steps {
+                sh 'mvn -f catalog-service/pom.xml clean package -DskipTests=true -Ddockerfile.skip'
+            }
+        }
+        stage('Build docker image') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml image'
+            }
+        }
+        stage('Package Helm Chart') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-artifactory-user', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD'),
+                                string(credentialsId: 'artifactory-api-token-id', variable: 'HELM_TOKEN')]) {
+                    sh './bob/bob -r catalog-service/ruleset2.0.yaml package'
+                }
+            }
+        }
+        stage('Publish local internal Helm Chart') {
+            steps {
+                withCredentials([string(credentialsId: 'artifactory-api-token-id', variable: 'HELM_TOKEN')]) {
+                    sh './bob/bob -r catalog-service/ruleset2.0.yaml publish-internal'
+                }
+            }
+        }
+    }
+}

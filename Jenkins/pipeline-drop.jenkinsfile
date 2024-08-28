@@ -1,0 +1,68 @@
+pipeline {
+    agent {
+        node {
+            label 'E2c_Testing_Vapp'
+        }
+    }
+	environment {
+			RELEASE = 'true'
+	}
+    stages {
+        stage('Prepare') {
+            steps {
+                /*
+                   Snippet generated from a manual configuration based on the ADP howto:
+                   https://confluence.lmera.ericsson.se/pages/viewpage.action?spaceKey=ACD&title=How+to+checkout+sub-modules+in+Jenkins+Pipeline
+                   More about snippet generation:
+                   https://www.jenkins.io/doc/book/pipeline/getting-started/#snippet-generator
+                   ${YOUR_JENKINS_URL}/pipeline-syntax
+                */
+                sh 'uname -a;whoami;echo $PATH;groups'
+                sh 'git clean -xdff'
+                sh 'git submodule sync'
+                sh 'git submodule update --init --recursive'
+                // Ensure that Bob has all of its dependencies.
+                /* End of generated snippet */
+                sh './bob/bob --help'
+            }
+        }
+        stage('Clean') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml clean'
+            }
+        }
+        stage('Init') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml init'
+                archiveArtifacts 'artifact.properties'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn -f catalog-service/pom.xml clean package -DskipTests=true -Ddockerfile.skip'
+            }
+        }
+        stage('Build docker image') {
+            steps {
+                sh './bob/bob -r catalog-service/ruleset2.0.yaml image'
+            }
+        }
+        stage('Create Helm Package') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-artifactory-user', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD'),
+                                string(credentialsId: 'artifactory-api-token-id', variable: 'HELM_TOKEN')]) {
+                        sh './bob/bob -r catalog-service/ruleset2.0.yaml package'
+                }
+            }
+        }
+        stage('Publish Docker Image and Helm Chart') {
+            steps {
+                withCredentials([string(credentialsId: 'artifactory-api-token-id', variable: 'HELM_TOKEN'),
+                                 usernamePassword(credentialsId: 'gerrit-user', usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD')])
+                {
+                    sh './bob/bob -r catalog-service/ruleset2.0.yaml publish'
+                }
+            }
+        }
+    }
+}
